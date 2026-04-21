@@ -117,7 +117,3 @@ Isso normalmente significa que o `TARGET_FRIEND_ID64` está incorreto ou que a c
 
 - O projeto foi pensado para uso pessoal com amigos que consentem com esse tipo de automação.
 - Se quiser adaptar o comportamento, o ponto principal está em `main.py`.
-
-## Licença
-
-Defina aqui a licença que você preferir antes de publicar o projeto.

@@ -1,7 +1,7 @@
 [project]
 name = "steam-friend-annoyer"
 version = "0.1.0"
-description = "Add your description here"
+description = "Annoy your friends in Steam"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

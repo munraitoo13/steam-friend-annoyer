@@ -3,13 +3,16 @@
 from typing import Callable, Optional
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QTextCursor
 from PySide6.QtWidgets import (
+    QApplication,
     QCheckBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
     QListWidget,
     QListWidgetItem,
+    QPlainTextEdit,
     QPushButton,
     QVBoxLayout,
     QWidget,
@@ -259,3 +262,66 @@ class SettingsWidget(QWidget):
     def _on_clear_all_clicked(self):
         if self._on_clear_all:
             self._on_clear_all()
+
+
+class DiagnosticsWidget(QWidget):
+    """Live diagnostics and log viewer."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._on_open_logs: Optional[Callable] = None
+        self._setup_ui()
+
+    def _setup_ui(self):
+        layout = QVBoxLayout()
+
+        title = QLabel("Live Logs")
+        title.setStyleSheet("font-weight: bold;")
+        layout.addWidget(title)
+
+        self.log_view = QPlainTextEdit()
+        self.log_view.setReadOnly(True)
+        self.log_view.setPlaceholderText("Runtime logs will appear here.")
+        self.log_view.setStyleSheet("font-family: Consolas, monospace;")
+        layout.addWidget(self.log_view)
+
+        button_layout = QHBoxLayout()
+
+        self.copy_button = QPushButton("Copy Logs")
+        self.copy_button.clicked.connect(self._copy_logs)
+        button_layout.addWidget(self.copy_button)
+
+        self.clear_button = QPushButton("Clear View")
+        self.clear_button.clicked.connect(self.log_view.clear)
+        button_layout.addWidget(self.clear_button)
+
+        self.open_logs_button = QPushButton("Open Log Folder")
+        self.open_logs_button.clicked.connect(self._on_open_logs_clicked)
+        button_layout.addWidget(self.open_logs_button)
+
+        button_layout.addStretch()
+        layout.addLayout(button_layout)
+
+        self.setLayout(layout)
+
+    def set_on_open_logs(self, callback: Callable):
+        """Set callback for opening the log folder."""
+        self._on_open_logs = callback
+
+    def append_log_entry(self, text: str):
+        """Append a log line to the viewer."""
+        self.log_view.appendPlainText(text)
+
+        lines = self.log_view.toPlainText().splitlines()
+        if len(lines) > 1000:
+            self.log_view.setPlainText("\n".join(lines[-1000:]))
+
+        self.log_view.moveCursor(QTextCursor.End)
+
+    def _copy_logs(self):
+        clipboard = QApplication.clipboard()
+        clipboard.setText(self.log_view.toPlainText())
+
+    def _on_open_logs_clicked(self):
+        if self._on_open_logs:
+            self._on_open_logs()

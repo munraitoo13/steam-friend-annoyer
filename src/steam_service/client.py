@@ -80,8 +80,17 @@ class SteamService:
         """
         with self._lock:
             if self._running:
+                logger.debug(
+                    "SteamService.start ignored because service is already running"
+                )
                 return False
 
+            logger.debug(
+                "SteamService.start requested for username=%s session_cached=%s guard_code=%s",
+                username,
+                bool(session),
+                bool(guard_code),
+            )
             self._running = True
             self._thread = threading.Thread(
                 target=self._run_client,
@@ -93,6 +102,7 @@ class SteamService:
 
     def stop(self):
         """Stop Steam client."""
+        logger.debug("SteamService.stop requested")
         with self._lock:
             self._running = False
 
@@ -119,6 +129,7 @@ class SteamService:
     ):
         """Run the Steam client (called in background thread)."""
         try:
+            logger.debug("Creating SteamClient instance in background thread")
             # SteamClient/gevent objects must be created and used in the same thread.
             self._client = SteamClient()
 
@@ -136,8 +147,13 @@ class SteamService:
 
             # Attempt login using GUI-provided credentials and optional guard code.
             if session and session.get("login_key"):
+                logger.debug("Attempting Steam login using cached login key")
                 result = self._client.login(username, login_key=session["login_key"])
             else:
+                logger.debug(
+                    "Attempting Steam login using username/password; guard_code_present=%s",
+                    bool(guard_code),
+                )
                 result = self._client.login(
                     username,
                     password,
@@ -153,10 +169,12 @@ class SteamService:
                 )
 
             if result != EResult.OK:
+                logger.error("Steam login failed with result %s", result)
                 self._call_error(f"Login failed: {result}")
                 return
 
             # Save session for future logins
+            logger.debug("Steam login succeeded; persisting session data")
             session_data = {
                 "username": username,
                 "password": password,
@@ -192,20 +210,24 @@ class SteamService:
 
     def _on_logged_on(self):
         """Called when logged on event is emitted."""
+        logger.debug("Steam logged_on event received")
         self._call_connected()
         self._update_all_friends()
 
     def _on_client_disconnected(self):
         """Called when disconnected event is emitted."""
+        logger.debug("Steam disconnected event received")
         self._call_disconnected()
 
     def _on_friends_ready(self):
         """Called when friends cache is ready; sync initial game state."""
+        logger.debug("Steam friends cache is ready")
         self._update_all_friends()
 
     def _on_new_login_key(self, login_key):
         """Persist the latest Steam login key for future runs."""
         try:
+            logger.debug("Received new Steam login key")
             self._latest_login_key = login_key
             session = self._storage.get_session() or {}
             session["login_key"] = login_key
@@ -217,6 +239,10 @@ class SteamService:
         """Handle persona state updates."""
         try:
             monitored_friends = self._storage.get_friends()
+            logger.debug(
+                "Persona state update received for %d friends",
+                len(message.body.friends),
+            )
 
             for friend_data in message.body.friends:
                 friend_id = int(friend_data.friendid)
@@ -232,12 +258,14 @@ class SteamService:
                     # Friend stopped playing
                     if game_id is None:
                         if old_game_id is not None:
+                            logger.debug("Friend %s stopped playing", friend_id)
                             self._friend_game_ids[friend_id] = None
                             self._sent_messages.discard(friend_id)
                             self._call_friend_state_changed(friend_id, None)
 
                     # Friend started playing
                     elif game_id != old_game_id:
+                        logger.debug("Friend %s started game %s", friend_id, game_id)
                         self._friend_game_ids[friend_id] = game_id
                         self._sent_messages.discard(friend_id)
                         self._send_message_to_friend(friend_id)
@@ -250,6 +278,9 @@ class SteamService:
         """Poll all monitored friends for current state."""
         try:
             monitored_friends = self._storage.get_friends()
+            logger.debug(
+                "Polling %d monitored friends for initial state", len(monitored_friends)
+            )
 
             for friend_id in monitored_friends:
                 try:
@@ -261,6 +292,11 @@ class SteamService:
                             old_game_id = self._friend_game_ids.get(friend_id)
 
                             if game_id and game_id != old_game_id:
+                                logger.debug(
+                                    "Initial poll found friend %s in game %s",
+                                    friend_id,
+                                    game_id,
+                                )
                                 self._friend_game_ids[friend_id] = game_id
                                 self._sent_messages.discard(friend_id)
                                 self._send_message_to_friend(friend_id)
@@ -274,24 +310,31 @@ class SteamService:
     def _send_message_to_friend(self, friend_id: int):
         """Send random message to friend (call only with lock held)."""
         if friend_id in self._sent_messages:
+            logger.debug(
+                "Skipping message for friend %s because it was already sent", friend_id
+            )
             return
 
         messages = self._storage.get_messages()
         if not messages:
+            logger.debug("No messages configured; skipping send to %s", friend_id)
             return
 
         try:
             friend = self._client.get_user(friend_id, fetch_persona_state=True)
             if not friend:
+                logger.debug("Could not resolve friend object for %s", friend_id)
                 return
 
             message = random.choice(messages)
+            logger.debug("Sending message to %s: %s", friend_id, message)
             friend.send_message(message)
 
             self._sent_messages.add(friend_id)
             self._call_message_sent(friend_id, message)
 
         except Exception as e:
+            logger.error("Failed to send message to %s: %s", friend_id, e)
             self._call_error(f"Failed to send message to {friend_id}: {str(e)}")
 
     @staticmethod

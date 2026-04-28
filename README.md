@@ -11,6 +11,7 @@ Monitor your Steam friends and automatically send messages when they start playi
 - **Windows toast notifications**: Get notified when messages are sent
 - **Data persistence**: All settings stored in `%APPDATA%/SteamFriendAnnoyer/`
 - **Auto-update**: Check for new versions from GitHub releases
+- **Diagnostics tab**: View live logs and open the app log folder from inside the app
 - **Portable executable**: Single standalone .exe file, no installation required
 
 ## Architecture
@@ -168,6 +169,10 @@ Application logs are saved to:
 ```
 %APPDATA%/SteamFriendAnnoyer/app.log
 ```
+
+The app also includes a **Diagnostics** tab with a live log viewer, plus buttons to copy the current log view, clear the view, and open the log folder.
+
+If the Windows `.exe` behaves differently from `uv run main.py`, check `app.log` first. The packaged build runs without a console window, so the Diagnostics tab is the fastest way to see what failed.
 
 ## Auto-Update
 

@@ -1,10 +1,12 @@
 """Application controller - main orchestration."""
 
 import logging
+import os
 from pathlib import Path
 from typing import Optional
 
-from PySide6.QtCore import QObject, Signal
+from PySide6.QtCore import QObject, QUrl, Signal
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import QApplication
 
 from src.persistence.storage import StorageManager
@@ -13,6 +15,7 @@ from src.system_integration.auto_update import AutoUpdateManager
 from src.system_integration.notifications import send_notification
 from src.system_integration.tray import TrayIcon
 from src.ui.main_window import MainWindow
+from src.utils.config import get_app_data_dir
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +63,7 @@ class ApplicationController:
         self.ui.set_on_start_minimized(self._on_start_minimized)
         self.ui.set_on_clear_session(self._on_clear_session)
         self.ui.set_on_clear_all(self._on_clear_all)
+        self.ui.set_on_open_logs(self._on_open_logs)
 
         # Tray callbacks
         self.tray.set_on_start(self._on_run_clicked)
@@ -121,6 +125,7 @@ class ApplicationController:
 
     def show(self):
         """Show main window."""
+        logger.debug("Showing main window")
         self.ui.show()
         self.tray.show()
         self.tray.update_menu(False)
@@ -128,6 +133,7 @@ class ApplicationController:
 
     def run(self):
         """Run the application."""
+        logger.debug("Running application controller")
         self.ui.show()
         self.tray.show()
         self.tray.update_menu(False)
@@ -166,6 +172,8 @@ class ApplicationController:
 
     def _on_run_clicked(self):
         """Start monitoring."""
+        logger.debug("Run requested")
+
         if not self.storage.get_friends():
             self.ui.show_error(
                 "No Friends", "Please add at least one friend to monitor"
@@ -185,20 +193,33 @@ class ApplicationController:
         if session and session.get("username") and session.get("password"):
             self._username = session.get("username")
             self._password = session.get("password")
+            logger.debug("Using stored credentials for %s", self._username)
         else:
             login_result = self.ui.show_login_dialog()
             if not login_result:
+                logger.debug("Login dialog cancelled")
                 return
 
             self._username, self._password, guard_code = login_result
+            logger.debug(
+                "Received credentials from login dialog for %s", self._username
+            )
 
         # Start Steam service
+        logger.debug(
+            "Starting Steam service: friends=%d messages=%d session_cached=%s guard_code=%s",
+            len(self.storage.get_friends()),
+            len(self.storage.get_messages()),
+            bool(session),
+            bool(guard_code),
+        )
         if not self.steam_service.start(
             self._username,
             self._password,
             session,
             guard_code,
         ):
+            logger.error("Steam service refused to start")
             self.ui.show_error("Error", "Failed to start Steam client")
             return
 
@@ -208,6 +229,7 @@ class ApplicationController:
 
     def _on_stop_clicked(self):
         """Stop monitoring."""
+        logger.debug("Stop requested")
         self.steam_service.stop()
         self.ui.set_running(False)
         self.tray.update_menu(False)
@@ -224,17 +246,37 @@ class ApplicationController:
 
     def _on_clear_session(self):
         """Clear login session."""
+        logger.debug("Clearing stored session")
         self.steam_service.stop()
         self.storage.clear_session()
         self.ui.show_info("Session Cleared", "Login cache has been removed")
 
     def _on_clear_all(self):
         """Clear all data."""
+        logger.debug("Clearing all application data")
         self.steam_service.stop()
         self.storage.clear_all_data()
         self.ui.show_info("Data Cleared", "All data has been reset")
         # Reload UI
         self._populate_ui()
+
+    def _on_open_logs(self):
+        """Open the app data folder for log inspection."""
+        app_dir = get_app_data_dir()
+        logger.debug("Opening app data directory: %s", app_dir)
+
+        try:
+            if os.name == "nt":
+                os.startfile(app_dir)
+                return
+
+            QDesktopServices.openUrl(QUrl.fromLocalFile(str(app_dir)))
+        except Exception as exc:
+            logger.error("Failed to open app data directory: %s", exc)
+            self.ui.show_error(
+                "Open Logs Failed",
+                f"Could not open {app_dir}. You can still inspect app.log manually.",
+            )
 
     def _on_tray_open(self):
         """Show window from tray."""
@@ -250,11 +292,13 @@ class ApplicationController:
 
     def _on_steam_connected(self):
         """Called when Steam client connects."""
+        logger.debug("Steam client connected")
         self.ui.set_status("running")
         self.tray.set_status("Running")
 
     def _on_steam_disconnected(self):
         """Called when Steam client disconnects."""
+        logger.debug("Steam client disconnected")
         if self.steam_service.is_running():
             self.ui.set_status("error")
             self.tray.set_status("Disconnected")

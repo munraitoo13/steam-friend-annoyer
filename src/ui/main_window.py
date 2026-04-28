@@ -17,7 +17,12 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from src.ui.widgets import ControlWidget, ListWithInputWidget, SettingsWidget
+from src.ui.widgets import (
+    ControlWidget,
+    DiagnosticsWidget,
+    ListWithInputWidget,
+    SettingsWidget,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -134,6 +139,7 @@ class MainWindow(QMainWindow):
         self._on_start_minimized: Optional[Callable[[bool], None]] = None
         self._on_clear_session: Optional[Callable] = None
         self._on_clear_all: Optional[Callable] = None
+        self._on_open_logs: Optional[Callable] = None
 
         self._setup_ui()
 
@@ -167,6 +173,11 @@ class MainWindow(QMainWindow):
         self.settings_widget.set_on_clear_session(self._on_clear_session_clicked)
         self.settings_widget.set_on_clear_all(self._on_clear_all_clicked)
         tabs.addTab(self.settings_widget, "Settings")
+
+        # Diagnostics tab
+        self.diagnostics_widget = DiagnosticsWidget()
+        self.diagnostics_widget.set_on_open_logs(self._on_open_logs_clicked)
+        tabs.addTab(self.diagnostics_widget, "Diagnostics")
 
         main_layout.addWidget(tabs)
 
@@ -207,6 +218,9 @@ class MainWindow(QMainWindow):
 
     def set_on_clear_all(self, callback: Callable):
         self._on_clear_all = callback
+
+    def set_on_open_logs(self, callback: Callable):
+        self._on_open_logs = callback
 
     def show_login_dialog(self) -> Optional[tuple]:
         """Show login dialog. Returns (username, password, guard_code) or None if cancelled."""
@@ -259,6 +273,10 @@ class MainWindow(QMainWindow):
             )
             == QMessageBox.Yes
         )
+
+    def append_log_entry(self, text: str):
+        """Append a log entry to the diagnostics tab."""
+        self.diagnostics_widget.append_log_entry(text)
 
     def _on_friend_added(self, text: str):
         if self._on_add_friend:
@@ -321,3 +339,7 @@ class MainWindow(QMainWindow):
         ):
             if self._on_clear_all:
                 self._on_clear_all()
+
+    def _on_open_logs_clicked(self):
+        if self._on_open_logs:
+            self._on_open_logs()

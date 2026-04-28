@@ -3,6 +3,20 @@
 import logging
 import sys
 
+# Fix for pywin32 packaging error with PyInstaller
+# See: https://github.com/pyinstaller/pyinstaller/issues/2022
+try:
+    # PyInstaller >= 4.0
+    from pyi_importers import FrozenImporter
+
+    if isinstance(sys.modules[__name__].__loader__, FrozenImporter):
+        import pythoncom
+        import pywintypes
+        import win32api
+        import win32crypt
+except (ImportError, AttributeError):
+    pass
+
 from PySide6.QtCore import QObject, Signal
 from PySide6.QtWidgets import QApplication
 

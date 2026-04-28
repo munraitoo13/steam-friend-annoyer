@@ -1,52 +1,341 @@
-# Steam Friend Annoyer
+# Steam Friend Annoyer - Desktop Edition
 
-Automatiza o envio de uma mensagem privada para um amigo específico da sua lista da Steam assim que ele entrar em um jogo. Se o script iniciar e o amigo já estiver jogando, a mensagem também é enviada imediatamente.
+Monitor your Steam friends and automatically send messages when they start playing games.
 
-O projeto usa a biblioteca [steam](https://steam.readthedocs.io/) para conectar na conta, ler o estado de presença do amigo e enviar a mensagem pelo chat da Steam.
+## Features
 
-## Funcionalidades
+- **Multi-friend monitoring**: Watch multiple friends simultaneously
+- **Automated messages**: Send random messages from your configured list when friends start playing
+- **Session persistence**: Login once, session is cached and reused
+- **System tray integration**: Minimize to tray, quick actions from system tray
+- **Windows toast notifications**: Get notified when messages are sent
+- **Data persistence**: All settings stored in `%APPDATA%/SteamFriendAnnoyer/`
+- **Auto-update**: Check for new versions from GitHub releases
+- **Portable executable**: Single standalone .exe file, no installation required
 
-- Envia mensagem para um amigo específico pelo Steam ID64.
-- Detecta quando o amigo já está em jogo logo na inicialização.
-- Detecta mudanças de presença e dispara a mensagem quando um novo jogo começa.
-- Funciona com login normal da Steam e autenticação em dois fatores.
-- Configuração simples via variáveis de ambiente.
+## Architecture
 
-## Requisitos
+```
+src/
+├── ui/              # PySide6 GUI components
+│   ├── main_window.py
+│   └── widgets.py
+├── steam_service/   # Steam client wrapper
+│   └── client.py
+├── persistence/     # Data storage and encryption
+│   └── storage.py
+├── system_integration/  # Tray, notifications, updates
+│   ├── tray.py
+│   ├── notifications.py
+│   └── auto_update.py
+└── utils/           # Helpers and validators
+    ├── config.py
+    ├── encryption.py
+    └── validators.py
+```
 
-- Python 3.12 ou superior.
-- Conta Steam válida.
-- A biblioteca `uv` instalada, se você quiser usar o fluxo recomendado do projeto.
+## Installation & Setup
 
-## Instalação
+### Requirements
 
-1. Clone o repositório.
-2. Entre na pasta do projeto.
-3. Instale as dependências.
+- Python 3.12 or later
+- Windows (for executable)
+
+### Development Installation
 
 ```bash
-uv sync
+# Clone and navigate to project
+cd steam-friend-annoyer
+
+# Install dependencies
+python dev.py install
+
+# For development with PyInstaller
+python dev.py install-dev
 ```
 
-Se preferir usar `pip`, instale as dependências listadas em `pyproject.toml`.
+### Running in Development
 
-## Configuração
-
-Crie um arquivo `.env` na raiz do projeto com estas variáveis:
-
-```env
-USERNAME=seu_usuario_steam
-PASSWORD=sua_senha_steam
-TARGET_FRIEND_ID64=7656119xxxxxxxxxx
-MESSAGE=pode fechar
+```bash
+python dev.py run
 ```
 
-### Variáveis de ambiente
+Or directly:
 
-- `USERNAME`: nome de usuário da sua conta Steam.
-- `PASSWORD`: senha da sua conta Steam.
-- `TARGET_FRIEND_ID64`: Steam ID64 do amigo que deve receber a mensagem.
-- `MESSAGE`: texto enviado no chat. Se não definir, o padrão é `pode fechar`.
+```bash
+python main.py
+```
+
+## Building the Executable
+
+### Build Requirements
+
+```bash
+python dev.py install-dev
+```
+
+### Build Command
+
+```bash
+python build/build.py
+```
+
+The executable will be created at:
+
+```
+dist/SteamFriendAnnoyer/SteamFriendAnnoyer.exe
+```
+
+### Manual PyInstaller Build
+
+```bash
+pyinstaller build/pyinstaller.spec
+```
+
+## Usage
+
+### First Run
+
+1. Launch the application
+2. Go to the **Friends** tab and add friends by:
+   - Entering a SteamID64 (17-digit number, e.g., 76561198123456789)
+   - Or pasting a Steam profile URL (extracts the ID automatically)
+3. Go to the **Messages** tab and add messages to send
+4. Click **Run** to start monitoring
+5. Enter your Steam credentials when prompted
+6. If Steam Guard is enabled, enter the 2FA code
+
+### Features
+
+**Friends Tab**
+
+- Add multiple friends to monitor
+- Double-click or use the X button to remove friends
+- Supports SteamID64 and Steam profile URLs
+
+**Messages Tab**
+
+- Add multiple messages
+- One random message is sent when a friend starts playing
+- Double-click or use the X button to remove messages
+
+**Settings Tab**
+
+- **Start with Windows**: Auto-launch on system startup (registry-based)
+- **Start minimized**: Launch directly to system tray
+- **Clear Session**: Remove login cache (requires re-login on next run)
+- **Clear All Data**: Full reset of all settings, friends, messages, and login data
+
+**Control Section**
+
+- **Run/Stop button**: Toggle monitoring on/off
+- **Status indicator**: Shows current state (Disconnected/Running/Error)
+
+### System Tray
+
+- Minimize the window to system tray (click minimize or X)
+- Right-click tray icon for quick actions:
+  - **Start/Stop**: Control monitoring
+  - **Open**: Show main window
+  - **Exit**: Close application
+
+## Data Storage
+
+All application data is stored in:
+
+```
+%APPDATA%/SteamFriendAnnoyer/
+```
+
+Files:
+
+- `friends.json` - List of monitored friends
+- `messages.json` - Messages to send
+- `config.json` - Application settings
+- `session.enc` - Encrypted login session
+- `app.log` - Application log file
+
+### Security
+
+- Session data is encrypted using Windows DPAPI
+- Credentials are stored encrypted
+- Clearing session only removes login cache; data persists
+
+## Logging
+
+Application logs are saved to:
+
+```
+%APPDATA%/SteamFriendAnnoyer/app.log
+```
+
+## Auto-Update
+
+The application automatically checks for updates from:
+
+```
+https://github.com/munraitoo13/steam-friend-annoyer/releases
+```
+
+When an update is available, you'll be prompted to download and install it.
+
+## GitHub Build and Release Automation
+
+The repository includes a GitHub Actions workflow that:
+
+- Builds the Windows `.exe` on every push to `main`
+- Uploads the `.exe` as a downloadable workflow artifact
+- Publishes the `.exe` to GitHub Releases when you push a tag like `v1.0.1`
+
+To publish a release build:
+
+```bash
+git tag v1.0.1
+git push origin v1.0.1
+```
+
+That is the step that turns your build into a stable download link for users and for the app's auto-update feature.
+
+## Development
+
+### Code Structure
+
+**Persistence Layer** (`src/persistence/`)
+
+- Thread-safe JSON storage
+- DPAPI encryption for sensitive data
+- Config, friends, messages, and session management
+
+**Steam Service** (`src/steam_service/`)
+
+- Background thread for Steam client
+- Event-driven state changes
+- Friend presence monitoring
+- Message sending with deduplication
+
+**UI Layer** (`src/ui/`)
+
+- PySide6 main window
+- Reusable widgets (lists, controls, settings)
+- Login and confirmation dialogs
+
+**System Integration** (`src/system_integration/`)
+
+- System tray icon and menu
+- Windows toast notifications
+- GitHub releases auto-update checker
+
+**Utilities** (`src/utils/`)
+
+- Configuration paths
+- Windows DPAPI encryption
+- Steam ID and message validation
+
+### Threading Model
+
+- **Main thread**: UI event loop (Qt)
+- **Steam thread**: Background Steam client, runs independently
+- **Communication**: Thread-safe callbacks from Steam service to UI
+
+### Building with Code Signing
+
+To build a signed executable:
+
+1. Update `build/pyinstaller.spec`:
+
+```python
+exe = EXE(
+    ...
+    codesign_identity="Your Certificate Name",
+    ...
+)
+```
+
+2. Build:
+
+```bash
+pyinstaller build/pyinstaller.spec
+```
+
+## Troubleshooting
+
+### Login Fails
+
+- Verify username and password
+- Try clearing session via Settings → Clear Session
+- Check app.log for detailed error messages
+
+### Steam Disconnects
+
+- Check internet connection
+- Verify Steam account is accessible
+- Logs will show reconnection attempts
+
+### Notifications Not Showing
+
+- Verify Windows notifications are enabled
+- Notifications are sent with app name "SteamFriendAnnoyer"
+- Check Windows notification settings for the app
+
+### Application Won't Start
+
+- Check `%APPDATA%/SteamFriendAnnoyer/app.log`
+- Verify all dependencies are installed
+- Try running in development mode to see errors
+
+## API & Integration
+
+### Steam Service Callbacks
+
+The application uses event-driven callbacks:
+
+```python
+steam_service.set_on_connected(callback)           # Connected to Steam
+steam_service.set_on_disconnected(callback)        # Disconnected
+steam_service.set_on_friend_state_changed(callback)  # Friend started/stopped playing
+steam_service.set_on_message_sent(callback)        # Message sent successfully
+steam_service.set_on_error(callback)               # Error occurred
+```
+
+### Storage Thread Safety
+
+`StorageManager` is thread-safe with internal locking:
+
+```python
+storage = StorageManager()
+storage.add_friend(steam_id)        # Thread-safe
+storage.get_friends()               # Thread-safe
+storage.set_session(session_data)   # Thread-safe
+```
+
+## Performance Considerations
+
+- Steam client runs in separate thread (non-blocking UI)
+- Friend state updates via event stream (not polling)
+- Deduplication prevents duplicate messages per game session
+- Lazy file I/O with batched writes for performance
+
+## Future Enhancements
+
+- [ ] Executable installer (NSIS)
+- [ ] Custom icon/branding
+- [ ] Message templates and variables
+- [ ] Schedule-based messaging
+- [ ] Activity logging UI
+- [ ] Friend profile preview
+- [ ] Multi-account support
+- [ ] Message history
+
+## License
+
+See LICENSE file (if applicable)
+
+## Support
+
+For issues, feature requests, or contributions:
+
+- GitHub: https://github.com/munraitoo13/steam-friend-annoyer
+- Issues: https://github.com/munraitoo13/steam-friend-annoyer/issues
 
 ## Como descobrir o Steam ID64
 

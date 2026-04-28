@@ -1,10 +1,23 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "steam-friend-annoyer"
-version = "0.1.0"
-description = "Annoy your friends in Steam"
+version = "1.0.0"
+description = "Monitor Steam friends and send automated messages when they start playing"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "python-dotenv>=1.2.2",
     "steam[client]>=1.4.4",
+    "PySide6>=6.6.0",
+    "requests>=2.31.0",
+    "cryptography>=41.0.0",
+    "pywin32>=305; sys_platform == 'win32'",
+    "win10toast; sys_platform == 'win32'",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pyinstaller>=6.0.0",
 ]

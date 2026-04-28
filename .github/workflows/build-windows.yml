@@ -58,10 +58,7 @@ jobs:
           name: SteamFriendAnnoyer-windows
 
       - name: Verify artifact contents
-        run: |
-          ls -R
-          unzip SteamFriendAnnoyer.exe # It's a single file, but download-artifact might wrap it. Let's check.
-          ls -R
+        run: ls -lh SteamFriendAnnoyer.exe
         shell: bash
 
       - name: Create Release and Upload Asset

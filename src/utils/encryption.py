@@ -12,14 +12,18 @@ except ImportError:
 def encrypt_data(data: str) -> bytes:
     """
     Encrypt data using Windows DPAPI.
-    Falls back to plaintext if not on Windows (for testing).
+    Falls back to plaintext if not on Windows or if win32crypt is unavailable.
     """
     if win32crypt is None:
         return data.encode("utf-8")
 
-    return win32crypt.CryptEncryptData(
-        data.encode("utf-8"), None, win32crypt.CRYPTPROTECT_UI_FORBIDDEN
-    )
+    try:
+        return win32crypt.CryptEncryptData(
+            data.encode("utf-8"), None, win32crypt.CRYPTPROTECT_UI_FORBIDDEN
+        )
+    except AttributeError:
+        # Fallback if CryptEncryptData is not available (PyInstaller bundling issue)
+        return data.encode("utf-8")
 
 
 def decrypt_data(encrypted_data: bytes) -> Optional[str]:
@@ -35,8 +39,12 @@ def decrypt_data(encrypted_data: bytes) -> Optional[str]:
             encrypted_data, None, win32crypt.CRYPTPROTECT_UI_FORBIDDEN
         )
         return decrypted.decode("utf-8")
-    except Exception:
-        return None
+    except (AttributeError, Exception):
+        # Fallback if CryptDecryptData is not available or fails
+        try:
+            return encrypted_data.decode("utf-8")
+        except Exception:
+            return None
 
 
 def encrypt_json(obj: Any) -> bytes:

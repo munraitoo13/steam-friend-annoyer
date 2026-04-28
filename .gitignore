@@ -1,10 +1,16 @@
 # Python-generated files
 __pycache__/
 *.py[oc]
-build/
 dist/
 wheels/
 *.egg-info
+
+# Keep build scripts/spec tracked, but ignore generated build output.
+build/
+!build/
+build/*
+!build/build.py
+!build/pyinstaller.spec
 
 # Virtual environments
 .venv

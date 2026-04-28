@@ -31,6 +31,7 @@ a = Analysis(
         "pywintypes",
         "pythoncom",
         "pywin32",
+        "steam.protobufs.steammessages_friendmessages_pb2",
     ],
     hookspath=[],
     hooksconfig={},

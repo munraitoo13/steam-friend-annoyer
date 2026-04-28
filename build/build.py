@@ -39,11 +39,11 @@ def build():
         exe_path = (
             PROJECT_ROOT / "dist" / "SteamFriendAnnoyer" / "SteamFriendAnnoyer.exe"
         )
-        print("\n✓ Build successful!")
+        print("\nBuild successful!")
         print(f"Executable: {exe_path}")
         print(f"\nTo run: {exe_path}")
     else:
-        print("\n✗ Build failed!")
+        print("\nBuild failed!")
         sys.exit(1)
 
 

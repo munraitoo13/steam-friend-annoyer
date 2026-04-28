@@ -7,13 +7,13 @@ Run: pyinstaller build/pyinstaller.spec
 Output: dist/SteamFriendAnnoyer.exe
 """
 
-import sys
 from pathlib import Path
 
 block_cipher = None
 
-# Get project root
-project_root = Path(__file__).parent.parent
+# PyInstaller executes spec files without defining __file__.
+# The build script runs with the project root as the current working directory.
+project_root = Path.cwd()
 
 a = Analysis(
     [str(project_root / "main.py")],
